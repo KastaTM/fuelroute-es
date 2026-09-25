@@ -1,0 +1,32 @@
+{
+  "source": "https://energia.serviciosmin.gob.es/ServiciosRestCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroProvincia/51",
+  "observed_fecha": "25/09/2026 19:15:43",
+  "stations": [
+    {
+      "IDEESS": "2754",
+      "Rótulo": "CEPSA",
+      "Dirección": "AVENIDA GONZALEZ TABLAS, S/N",
+      "Municipio": "Ceuta",
+      "Provincia": "CEUTA",
+      "Latitud": "35,889972",
+      "Longitud (WGS84)": "-5,319444",
+      "Precio Gasolina 95 E5": "1,674",
+      "Precio Gasoleo A": "1,704",
+      "Precio Gasolina 98 E10": "",
+      "Horario": "L-V: 07:00-22:00; S: 09:00-14:00"
+    },
+    {
+      "IDEESS": "11739",
+      "Rótulo": "ON365",
+      "Dirección": "MUELLE ALFAU, S/N",
+      "Municipio": "Ceuta",
+      "Provincia": "CEUTA",
+      "Latitud": "35,894722",
+      "Longitud (WGS84)": "-5,300861",
+      "Precio Gasolina 95 E5": "1,679",
+      "Precio Gasoleo A": "1,729",
+      "Precio Gasolina 98 E10": "",
+      "Horario": "L-D: 24H"
+    }
+  ]
+}
