@@ -36,6 +36,7 @@ class SourceMetadata:
     reported_at: datetime | None
     raw_reported_at: str | None
     note: str | None
+    unmapped_fuel_field_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)

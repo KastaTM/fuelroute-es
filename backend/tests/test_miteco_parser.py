@@ -152,10 +152,23 @@ def test_synthetic_invalid_date_is_explicit_error() -> None:
         parse_product_stations(payload, products()[0])
 
 
-def test_synthetic_unknown_general_price_field_is_error_even_when_empty() -> None:
+def test_synthetic_additive_price_field_is_ignored_and_counted() -> None:
     payload = general_payload()
-    payload["ListaEESSPrecio"][0]["Precio Combustible Inventado"] = ""
-    with pytest.raises(MitecoParseError, match="unrecognized price field"):
+    payload["ListaEESSPrecio"][0]["Precio Combustible Nuevo"] = "2,000"
+    payload["ListaEESSPrecio"][1]["Precio Combustible Nuevo"] = ""
+    batch = parse_general_stations(payload, products())
+    assert len(batch.stations) == 2
+    assert batch.source.unmapped_fuel_field_count == 1
+    assert batch.stations[0].prices[0].price_eur_l == Decimal("1.674")
+    assert all(
+        price.product.name != "Combustible Nuevo" for price in batch.stations[0].prices
+    )
+
+
+def test_synthetic_malformed_known_general_price_remains_error() -> None:
+    payload = general_payload()
+    payload["ListaEESSPrecio"][0]["Precio Gasolina 95 E5"] = "abc"
+    with pytest.raises(MitecoParseError, match="Precio Gasolina 95 E5"):
         parse_general_stations(payload, products())
 
 

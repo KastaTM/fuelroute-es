@@ -3,6 +3,7 @@
 import re
 import unicodedata
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
@@ -23,6 +24,10 @@ _DECIMAL = re.compile(r"-?\d+(?:,\d+)?\Z")
 
 class MitecoParseError(Exception):
     """A response has an unexpected shape or a malformed nonempty value."""
+
+
+class MitecoResultError(MitecoParseError):
+    """MITECO reports a semantic error in an otherwise parseable response."""
 
 
 def _object(value: object, location: str) -> Mapping[str, object]:
@@ -82,7 +87,7 @@ def _source(payload: Mapping[str, object]) -> SourceMetadata:
         payload.get("ResultadoConsulta", _MISSING), "ResultadoConsulta"
     )
     if result != "OK":
-        raise MitecoParseError(f"ResultadoConsulta: {result}")
+        raise MitecoResultError(f"ResultadoConsulta: {result}")
     raw_date = _text(payload.get("Fecha", _MISSING), "Fecha")
     reported_at = None
     if raw_date is not None:
@@ -167,30 +172,33 @@ def _product_fields(products: Sequence[FuelProduct]) -> Mapping[str, FuelProduct
 
 def _general_prices(
     row: Mapping[str, object], products: Mapping[str, FuelProduct]
-) -> tuple[FuelPrice, ...]:
+) -> tuple[tuple[FuelPrice, ...], set[str]]:
     if "PrecioProducto" in row:
         raise MitecoParseError("station: filtered price in general response")
     result = []
+    unmapped = set()
     for field, value in row.items():
         if not field.startswith("Precio "):
             continue
         key = "Precio " + _product_key(field.removeprefix("Precio "))
         product = products.get(key)
         if product is None:
-            raise MitecoParseError(f"station: unrecognized price field {field!r}")
+            unmapped.add(field)
+            continue
         price = _decimal_text(value, field)
         if price is not None:
             result.append(FuelPrice(product=product, price_eur_l=price))
-    return tuple(result)
+    return tuple(result), unmapped
 
 
 def _filtered_prices(
     row: Mapping[str, object], product: FuelProduct
-) -> tuple[FuelPrice, ...]:
+) -> tuple[tuple[FuelPrice, ...], set[str]]:
     if any(key.startswith("Precio ") for key in row):
         raise MitecoParseError("station: general prices in filtered response")
     price = _decimal_text(row.get("PrecioProducto", _MISSING), "PrecioProducto")
-    return () if price is None else (FuelPrice(product=product, price_eur_l=price),)
+    prices = () if price is None else (FuelPrice(product=product, price_eur_l=price),)
+    return prices, set()
 
 
 def _station(row: Mapping[str, object], prices: tuple[FuelPrice, ...]) -> Station:
@@ -214,20 +222,29 @@ def _station(row: Mapping[str, object], prices: tuple[FuelPrice, ...]) -> Statio
 
 
 def _stations(
-    payload: object, prices_for: Callable[[Mapping[str, object]], tuple[FuelPrice, ...]]
+    payload: object,
+    prices_for: Callable[
+        [Mapping[str, object]], tuple[tuple[FuelPrice, ...], set[str]]
+    ],
 ) -> StationBatch:
     root = _object(payload, "stations")
     source = _source(root)
     stations = []
+    unmapped_fields: set[str] = set()
     for index, value in enumerate(
         _array(root.get("ListaEESSPrecio", _MISSING), "ListaEESSPrecio")
     ):
         row = _object(value, f"ListaEESSPrecio[{index}]")
         try:
-            stations.append(_station(row, prices_for(row)))
+            prices, unmapped = prices_for(row)
+            unmapped_fields.update(unmapped)
+            stations.append(_station(row, prices))
         except MitecoParseError as exc:
             raise MitecoParseError(f"ListaEESSPrecio[{index}]: {exc}") from exc
-    return StationBatch(stations=tuple(stations), source=source)
+    return StationBatch(
+        stations=tuple(stations),
+        source=replace(source, unmapped_fuel_field_count=len(unmapped_fields)),
+    )
 
 
 def parse_general_stations(
