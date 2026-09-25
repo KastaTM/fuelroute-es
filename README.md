@@ -8,6 +8,10 @@ Base técnica de la Fase 0. La visión y las decisiones de producto están en [P
 - Node 24 LTS (probado con 24.19.0) y npm (probado con 8.19.2).
 - En PowerShell con scripts bloqueados, usar `npm.cmd` y `npx.cmd`.
 
+La referencia móvil para esta fase es Node **24.19.0**, igual que CI. Comprobar `node --version`, `npm.cmd --version` y `where.exe npm` antes de regenerar el lockfile. En el entorno auditado, `C:\Program Files\nodejs\npm.cmd` delega en npm 8.19.2 del prefijo de usuario; el npm incluido junto a Node es 11.17.0. No se han actualizado estas instalaciones.
+
+Usar `npm ci` para instalar. El lockfile actual es versión 2, generado con npm 8.19.2; npm posterior puede leerlo, pero regenerarlo con otra versión puede cambiar su formato o resolución. Mantener npm 8.19.2 al editar este lockfile durante la Fase 0; cualquier migración del gestor debe ser explícita y revisar su diff. CI usa el npm incluido con Node 24.19.0: su ejecución y versión efectiva aún requieren evidencia externa. [Formato del lockfile en npm](https://docs.npmjs.com/cli/v11/configuring-npm/package-lock-json/).
+
 La selección de Expo SDK 57, React Native 0.86.3 y React 19.2.3 sigue la [tabla oficial de compatibilidad](https://docs.expo.dev/versions/v57.0.0/). Node 24 supera el mínimo 22.13. El archivo `backend/.python-version`, `backend/uv.lock` y `mobile/package-lock.json` fijan el entorno de ejecución y las dependencias resueltas. Actualizar SDK y lockfiles en un PR separado, con `expo install --check`, tests y bundle. Revisar soporte de Android/iOS del teléfono objetivo antes de publicarlo.
 
 ## Backend
@@ -34,6 +38,7 @@ npm.cmd run lint
 npm.cmd run format:check
 npm.cmd run typecheck
 npm.cmd run test
+npx.cmd expo install --check
 npm.cmd run bundle
 npm.cmd start
 ```

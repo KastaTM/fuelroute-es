@@ -54,11 +54,15 @@ jobs:
       - name: Reject tracked environment files and obvious credentials
         shell: bash
         run: |
-          if git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.example$'; then
+          tracked_files="$(git ls-files)"
+          if printf '%s\n' "$tracked_files" | grep -E '(^|/)\.env($|\.)' | grep -vE '\.env\.example$'; then
             echo 'Tracked environment file found'; exit 1
           fi
-          if git grep -n -I -E '(ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' -- ':!*.lock' ':!.github/workflows/ci.yml'; then
+          if git grep -l -I -E '(ghp_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' -- .; then
             echo 'Potential credential found'; exit 1
+          else
+            result=$?
+            if [ "$result" -ne 1 ]; then exit "$result"; fi
           fi
       - uses: actions/setup-node@v6
         with:
