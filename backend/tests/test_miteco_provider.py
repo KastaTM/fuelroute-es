@@ -60,10 +60,10 @@ def test_catalog_operations_and_paths() -> None:
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         provider: FuelPriceProvider = MitecoFuelPriceProvider(client)
-        products = provider.get_products()
-        provinces = provider.get_provinces()
-        municipalities = provider.get_municipalities()
-        by_province = provider.get_municipalities("51")
+        products = provider.get_products().value
+        provinces = provider.get_provinces().value
+        municipalities = provider.get_municipalities().value
+        by_province = provider.get_municipalities("51").value
         assert len(products) == 30 and isinstance(products[0], FuelProduct)
         assert products[0].id == "1"
         assert provinces == (Province("02", "ALBACETE"), Province("51", "CEUTA"))
@@ -78,7 +78,7 @@ def test_province_id_keeps_leading_zero_in_path() -> None:
         return response([])
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
-        assert MitecoFuelPriceProvider(client).get_municipalities("02") == ()
+        assert MitecoFuelPriceProvider(client).get_municipalities("02").value == ()
 
 
 def test_general_stations_fetches_catalog_before_station_data() -> None:
@@ -101,7 +101,7 @@ def test_general_stations_fetches_catalog_before_station_data() -> None:
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         provider: FuelPriceProvider = MitecoFuelPriceProvider(client)
-        batch = provider.get_stations()
+        batch = provider.get_stations().value
     assert isinstance(batch, StationBatch)
     assert len(batch.stations) == 2
     assert batch.stations[0].prices[0] == FuelPrice(
@@ -123,7 +123,7 @@ def test_filtered_stations_use_requested_product_and_path() -> None:
 
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         provider: FuelPriceProvider = MitecoFuelPriceProvider(client)
-        batch = provider.get_stations_for_municipality_product("8110", product)
+        batch = provider.get_stations_for_municipality_product("8110", product).value
     assert isinstance(batch, StationBatch)
     assert batch.stations[0].prices == (FuelPrice(product, Decimal("1.698")),)
 
@@ -136,7 +136,7 @@ def test_valid_empty_result_is_not_an_error() -> None:
         batch = MitecoFuelPriceProvider(client).get_stations_for_municipality_product(
             "8110", FuelProduct("22", "Hidrógeno", "H2")
         )
-    assert batch.stations == ()
+    assert batch.value.stations == ()
 
 
 def test_configurable_timeout_maps_to_own_error() -> None:

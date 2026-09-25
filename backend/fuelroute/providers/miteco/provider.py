@@ -11,6 +11,7 @@ from fuelroute.domain.models import FuelProduct, Municipality, Province, Station
 from fuelroute.providers.base import (
     ProviderHTTPError,
     ProviderInvalidJSONError,
+    ProviderResult,
     ProviderSchemaError,
     ProviderSemanticError,
     ProviderTimeoutError,
@@ -75,36 +76,40 @@ class MitecoFuelPriceProvider:
         except MitecoParseError as exc:
             raise ProviderSchemaError(path, str(exc)[:160]) from exc
 
-    def get_products(self) -> tuple[FuelProduct, ...]:
-        return self._load("Listados/ProductosPetroliferos/", parse_products)
+    def get_products(self) -> ProviderResult[tuple[FuelProduct, ...]]:
+        return ProviderResult(
+            self._load("Listados/ProductosPetroliferos/", parse_products)
+        )
 
-    def get_provinces(self) -> tuple[Province, ...]:
-        return self._load("Listados/Provincias/", parse_provinces)
+    def get_provinces(self) -> ProviderResult[tuple[Province, ...]]:
+        return ProviderResult(self._load("Listados/Provincias/", parse_provinces))
 
     def get_municipalities(
         self, province_id: str | None = None
-    ) -> tuple[Municipality, ...]:
+    ) -> ProviderResult[tuple[Municipality, ...]]:
         path = (
             "Listados/Municipios/"
             if province_id is None
             else f"Listados/MunicipiosPorProvincia/{_id_segment(province_id)}"
         )
-        return self._load(path, parse_municipalities)
+        return ProviderResult(self._load(path, parse_municipalities))
 
-    def get_stations(self) -> StationBatch:
-        products = self.get_products()
-        return self._load(
-            "EstacionesTerrestres/",
-            lambda payload: parse_general_stations(payload, products),
+    def get_stations(self) -> ProviderResult[StationBatch]:
+        products = self.get_products().value
+        return ProviderResult(
+            self._load(
+                "EstacionesTerrestres/",
+                lambda payload: parse_general_stations(payload, products),
+            )
         )
 
     def get_stations_for_municipality_product(
         self, municipality_id: str, product: FuelProduct
-    ) -> StationBatch:
+    ) -> ProviderResult[StationBatch]:
         path = (
             "EstacionesTerrestres/FiltroMunicipioProducto/"
             f"{_id_segment(municipality_id)}/{_id_segment(product.id)}"
         )
-        return self._load(
-            path, lambda payload: parse_product_stations(payload, product)
+        return ProviderResult(
+            self._load(path, lambda payload: parse_product_stations(payload, product))
         )
