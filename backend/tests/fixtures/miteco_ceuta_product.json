@@ -1,0 +1,31 @@
+{
+  "source": "https://energia.serviciosmin.gob.es/ServiciosRestCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroMunicipioProducto/8110/1",
+  "captured_at_utc": "2026-09-25T18:27:09+00:00",
+  "selection": "first station only",
+  "response": {
+    "Fecha": "25/09/2026 20:27:10",
+    "ListaEESSPrecio": [
+      {
+        "C.P.": "51001",
+        "Dirección": "AVENIDA MUELLE CAÑONERO DATO, S/N",
+        "Horario": "L-D: 24H",
+        "Latitud": "35,894056",
+        "Localidad": "CEUTA",
+        "Longitud (WGS84)": "-5,322917",
+        "Margen": "D",
+        "Municipio": "Ceuta",
+        "PrecioProducto": "1,698",
+        "Provincia": "CEUTA",
+        "Remisión": "OM",
+        "Rótulo": "SHELL PUNTA ALMINA",
+        "Tipo Venta": "P",
+        "IDEESS": "2755",
+        "IDMunicipio": "8110",
+        "IDProvincia": "51",
+        "IDCCAA": "18"
+      }
+    ],
+    "Nota": "Archivo de todos los productos en todas las estaciones de servicio. La actualizaciÃ³n de precios se realiza cada media hora, con los precios en vigor en ese momento.",
+    "ResultadoConsulta": "OK"
+  }
+}

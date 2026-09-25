@@ -1,0 +1,11 @@
+{
+  "source": "https://energia.serviciosmin.gob.es/ServiciosRestCarburantes/PreciosCarburantes/EstacionesTerrestres/FiltroMunicipioProducto/8110/22",
+  "captured_at_utc": "2026-09-25T18:27:09+00:00",
+  "selection": "complete empty response",
+  "response": {
+    "Fecha": "25/09/2026 20:27:10",
+    "ListaEESSPrecio": [],
+    "Nota": "Archivo de todos los productos en todas las estaciones de servicio. La actualizaciÃ³n de precios se realiza cada media hora, con los precios en vigor en ese momento.",
+    "ResultadoConsulta": "OK"
+  }
+}
