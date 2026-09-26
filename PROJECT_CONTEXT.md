@@ -1416,7 +1416,7 @@ El objetivo es que cualquier nueva conversación o agente pueda leer `PROJECT_CO
 - **Entrega al orquestador.** Al terminar cada fase, el usuario traerá un reporte del chat de trabajo con: objetivo alcanzado; commits o PR; archivos modificados; decisiones; pruebas y comandos con sus resultados; comprobación manual en móvil si procede; incidencias; limitaciones; próximos pasos propuestos. Se pegará el resultado completo cuando haya errores.
 - **Cierre.** El orquestador comprobará los criterios de aceptación con el reporte y las evidencias disponibles, pedirá arreglos en el chat de fase si hacen falta y solo entonces propondrá abrir el chat de la siguiente fase. No se dará por validada una prueba o un despliegue sin su resultado.
 
-**Estado vigente (25/09/2026):** Fase 0 cerrada formalmente por el orquestador. Fase 1 activa; su primer incremento documentó el contrato MITECO antes de la implementación del parser.
+**Registro histórico (25/09/2026):** Fase 0 cerrada formalmente por el orquestador. Fase 1 activa; su primer incremento documentó el contrato MITECO antes de la implementación del parser.
 
 ---
 
@@ -1489,4 +1489,4 @@ Cerrar únicamente con lista de requisitos satisfechos y evidencia verificable: 
 
 Este documento fija los requisitos y el proceso; el repositorio y sus pruebas son la fuente de verdad para la implementación. Registrar aquí cambios de visión o fase activa tras aprobarlos.
 
-**Estado vigente (25/09/2026):** Fase 0 cerrada por el orquestador; repositorio y CI verificables en GitHub. Fase 1 en curso, pendiente de revisión por el orquestador.
+**Estado vigente (27/09/2026):** Fase 0 cerrada por el orquestador; repositorio y CI de esa fase verificables en GitHub. Fase 1 en curso, pendiente de revisión por el orquestador. El estado de su PR y CI se acredita en GitHub.
