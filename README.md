@@ -27,7 +27,7 @@ uv run --locked uvicorn app:app --host 127.0.0.1 --port 8000
 # En otra terminal: Invoke-RestMethod http://127.0.0.1:8000/health
 ```
 
-`GET /health` devuelve `{"status":"ok"}`. No se necesita `.env` para esta fase.
+`GET /health` devuelve `{"status":"ok"}`. También están disponibles `GET /fuels`, `GET /provinces` y `GET /municipalities` (opcionalmente `?province_id=02`). Los catálogos responden con `items` normalizados y `freshness` (`fetched_at` UTC, `age_seconds`, `state`, `is_stale`). Una entrada stale utilizable responde 200 y se marca como tal. El primer acceso a un catálogo consulta MITECO; `/health` no lo hace. No se necesita `.env` para esta fase.
 
 ## Móvil
 

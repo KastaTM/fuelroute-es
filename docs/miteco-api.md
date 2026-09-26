@@ -88,3 +88,13 @@ El fallback stale solo procede si ya había entrada, su edad al terminar el inte
 La caché desaparece al reiniciar y cada proceso o worker tiene la suya; no hay coherencia distribuida. Esto basta para el MVP de Fase 1 y evita añadir SQLite o infraestructura. Un `Lock` protege lecturas y escrituras del diccionario, pero no se mantiene durante la llamada al provider. Dos misses concurrentes pueden duplicar trabajo; no hay coalescing.
 
 En un hit de estaciones generales no se llama a MITECO. En un miss o refresh, `MitecoFuelPriceProvider.get_stations()` vuelve a obtener el catálogo de productos antes de normalizar el lote. Distintas claves de estaciones pueden repetir esa consulta interna porque el decorador no puede reutilizarla sin acoplarse a detalles del provider; queda como posible optimización posterior.
+
+## Integración HTTP mínima — Fase 1, incremento 5
+
+`backend/app.py` crea un único `httpx.Client` por proceso en el lifespan de FastAPI, lo entrega a `MitecoFuelPriceProvider` y envuelve este en `CachingFuelPriceProvider`. El cliente se cierra al apagar la aplicación. La dependencia `get_provider` permite sustituir el provider en tests sin consultar MITECO. La URL oficial permanece fija en el módulo MITECO; el timeout de 15 s y los intervalos de caché de 10/30 min proceden de los defaults validados de sus constructores. No hay configuración de entorno ni dependencia nueva.
+
+`GET /fuels`, `GET /provinces` y `GET /municipalities` exponen solo campos normalizados de FuelRoute dentro de `items`; este último acepta opcionalmente un `province_id` textual de dígitos, conservando ceros iniciales. `freshness` informa del instante de obtención UTC, edad en segundos, estado de caché y si es stale. Un fallback stale válido sigue siendo HTTP 200. La `Fecha` de MITECO no se usa como timestamp de caché.
+
+La API traduce indisponibilidad, timeout y HTTP upstream 408/429/5xx a 503; respuestas inválidas, errores semánticos y otros 4xx upstream a 502. Los cuerpos de error son fijos y no contienen rutas ni mensajes ministeriales. `/health` permanece independiente del provider.
+
+Las estaciones ya se obtienen y normalizan en pruebas internas, pero todavía no tienen rutas HTTP. `/stations/nearby` pertenece a Fase 2; publicar ahora búsqueda o detalle no aporta evidencia necesaria para cerrar Fase 1 y fijaría contratos prematuramente. La Fase 1 sigue en curso.
