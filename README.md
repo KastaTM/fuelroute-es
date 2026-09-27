@@ -1,6 +1,6 @@
 # FuelRoute ES
 
-Base técnica iniciada en la Fase 0. La visión y las decisiones de producto están en [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md). El bootstrap entregó una API de salud, una pantalla Expo mínima y una consulta controlada a MITECO; la Fase 1 está cerrada y la Fase 2 está activa.
+Base técnica iniciada en la Fase 0. La visión y las decisiones de producto están en [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md). El bootstrap entregó una API de salud, una pantalla Expo mínima y una consulta controlada a MITECO; las Fases 1 y 2 están cerradas y la Fase 3 está activa, pendiente de revisión y cierre.
 
 ## Requisitos
 

@@ -13,6 +13,31 @@ class FuelProduct:
 
 
 @dataclass(frozen=True, slots=True)
+class Vehicle:
+    id: str
+    nickname: str
+    fuel_product_id: str
+    average_consumption_l_100km: Decimal
+    make: str | None = None
+    model: str | None = None
+    year: int | None = None
+    tank_capacity_l: Decimal | None = None
+    is_active: bool = False
+
+    def __post_init__(self) -> None:
+        for field_name in ("id", "nickname", "fuel_product_id"):
+            value = getattr(self, field_name)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field_name} must be a non-empty string")
+        for field_name in ("average_consumption_l_100km", "tank_capacity_l"):
+            value = getattr(self, field_name)
+            if value is None and field_name == "tank_capacity_l":
+                continue
+            if not isinstance(value, Decimal) or not value.is_finite() or value <= 0:
+                raise ValueError(f"{field_name} must be a finite positive Decimal")
+
+
+@dataclass(frozen=True, slots=True)
 class FuelPrice:
     product: FuelProduct
     price_eur_l: Decimal
