@@ -309,10 +309,7 @@ def get_nearby_stations(
     geographic = search_nearby(
         provider, NearbySearchRequest(lat, lon, fuel, radius_km, limit=None)
     )
-    try:
-        result = personalize_nearby(geographic, personalized_request)
-    except ValueError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
+    result = personalize_nearby(geographic, personalized_request)
     return NearbyStationsResponse(
         items=[
             NearbyStationResponse(

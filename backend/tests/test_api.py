@@ -838,3 +838,20 @@ def test_http_openapi_documents_personalization_policy() -> None:
     assert (
         "replacement reference price" in fields["estimated_travel_cost"]["description"]
     )
+
+
+def test_internal_personalization_error_is_not_client_validation() -> None:
+    fake = _nearby_fake()
+    application = create_app()
+    application.dependency_overrides[get_provider] = lambda: fake
+    with patch(
+        "fuelroute.api.personalize_nearby",
+        side_effect=ValueError("internal personalized invariant"),
+    ):
+        with TestClient(application, raise_server_exceptions=False) as client:
+            response = client.get("/stations/nearby", params=NEARBY_PARAMS)
+    assert response.status_code == 500
+    assert response.text == "Internal Server Error"
+    assert "internal personalized invariant" not in response.text
+    assert fake.product_calls == 1
+    assert fake.station_calls == 1
