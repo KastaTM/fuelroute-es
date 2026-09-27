@@ -1,6 +1,7 @@
 """Public catalog API tests with provider fakes and no network access."""
 
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 
 import httpx
 import pytest
@@ -9,9 +10,12 @@ from fastapi.testclient import TestClient
 from app import create_app
 from fuelroute.api import get_provider
 from fuelroute.domain.models import (
+    FuelPrice,
     FuelProduct,
     Municipality,
     Province,
+    SourceMetadata,
+    Station,
     StationBatch,
 )
 from fuelroute.providers.base import (
@@ -30,6 +34,13 @@ class CatalogFake:
     def __init__(self) -> None:
         self.calls: list[str | None] = []
         self.failure: Exception | None = None
+        self.station_failure: Exception | None = None
+        self.station_calls = 0
+        self.products: tuple[FuelProduct, ...] = (
+            FuelProduct("1", "Gasolina 95 E5", "G95E5"),
+        )
+        self.station_batch = StationBatch((), SourceMetadata(None, None, None))
+        self.station_freshness = self._freshness()
         self.municipalities: tuple[Municipality, ...] = (
             Municipality("100", "Municipio", "02"),
         )
@@ -46,9 +57,7 @@ class CatalogFake:
 
     def get_products(self) -> ProviderResult[tuple[FuelProduct, ...]]:
         self._fail_if_needed()
-        return ProviderResult(
-            (FuelProduct("1", "Gasolina 95 E5", "G95E5"),), self._freshness()
-        )
+        return ProviderResult(self.products, self._freshness())
 
     def get_provinces(self) -> ProviderResult[tuple[Province, ...]]:
         self._fail_if_needed()
@@ -62,7 +71,10 @@ class CatalogFake:
         return ProviderResult(self.municipalities, self._freshness())
 
     def get_stations(self) -> ProviderResult[StationBatch]:
-        raise AssertionError("station API must not call this method")
+        self.station_calls += 1
+        if self.station_failure is not None:
+            raise self.station_failure
+        return ProviderResult(self.station_batch, self.station_freshness)
 
     def get_stations_for_municipality_product(
         self, municipality_id: str, product: FuelProduct
@@ -233,3 +245,269 @@ def test_real_composition_serves_second_catalog_request_from_cache() -> None:
         "PreciosCarburantes/Listados/ProductosPetroliferos/"
     ]
     assert http_client.is_closed
+
+
+NEARBY_PARAMS = {"lat": "0", "lon": "0", "fuel": "01", "radius_km": "300"}
+
+
+def _station(station_id: str, longitude: float, *prices: FuelPrice) -> Station:
+    return Station(
+        id=station_id,
+        brand="Brand",
+        address="Street 1",
+        locality="Locality",
+        municipality="Town",
+        province="Province",
+        municipality_id="0001",
+        province_id="02",
+        postal_code="12345",
+        latitude=0,
+        longitude=longitude,
+        schedule="24H",
+        prices=prices,
+    )
+
+
+def _nearby_fake() -> CatalogFake:
+    fake = CatalogFake()
+    selected = FuelProduct("01", "Product 01", "P01")
+    fake.products = (fake.products[0], selected)
+    fake.station_batch = StationBatch(
+        (
+            _station("far", 2, FuelPrice(selected, Decimal("1.999"))),
+            _station(
+                "near",
+                1,
+                FuelPrice(fake.products[0], Decimal("1.111")),
+                FuelPrice(selected, Decimal("1.234")),
+            ),
+        ),
+        SourceMetadata(None, "private source time", "private note"),
+    )
+    return fake
+
+
+def test_nearby_exact_normalized_json_and_textual_fuel() -> None:
+    fake = _nearby_fake()
+    with _client(fake) as client:
+        response = client.get("/stations/nearby", params=NEARBY_PARAMS)
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "station": {
+                    "id": "near",
+                    "brand": "Brand",
+                    "address": "Street 1",
+                    "locality": "Locality",
+                    "municipality": "Town",
+                    "province": "Province",
+                    "municipality_id": "0001",
+                    "province_id": "02",
+                    "postal_code": "12345",
+                    "latitude": 0.0,
+                    "longitude": 1.0,
+                    "schedule": "24H",
+                },
+                "price": {
+                    "product": {
+                        "id": "01",
+                        "name": "Product 01",
+                        "abbreviation": "P01",
+                    },
+                    "price_eur_l": "1.234",
+                },
+                "distance_km": pytest.approx(111.1950802335329),
+            },
+            {
+                "station": {
+                    "id": "far",
+                    "brand": "Brand",
+                    "address": "Street 1",
+                    "locality": "Locality",
+                    "municipality": "Town",
+                    "province": "Province",
+                    "municipality_id": "0001",
+                    "province_id": "02",
+                    "postal_code": "12345",
+                    "latitude": 0.0,
+                    "longitude": 2.0,
+                    "schedule": "24H",
+                },
+                "price": {
+                    "product": {
+                        "id": "01",
+                        "name": "Product 01",
+                        "abbreviation": "P01",
+                    },
+                    "price_eur_l": "1.999",
+                },
+                "distance_km": pytest.approx(222.3901604670658),
+            },
+        ],
+        "freshness": {
+            "fetched_at": "2026-09-27T00:00:00Z",
+            "age_seconds": 0.0,
+            "state": "miss",
+            "is_stale": False,
+        },
+    }
+    assert fake.station_calls == 1
+    for forbidden in ("IDEESS", "PrecioProducto", "ListaEESSPrecio", "private"):
+        assert forbidden not in response.text
+
+
+@pytest.mark.parametrize(
+    ("key", "value"),
+    [
+        ("lat", "-90.01"),
+        ("lat", "90.01"),
+        ("lon", "-180.01"),
+        ("lon", "180.01"),
+        ("lat", "NaN"),
+        ("lon", "Infinity"),
+        ("radius_km", "0"),
+        ("radius_km", "-1"),
+        ("radius_km", "Infinity"),
+        ("fuel", ""),
+        ("fuel", "   "),
+        ("limit", "0"),
+        ("limit", "-1"),
+        ("limit", "101"),
+    ],
+)
+def test_nearby_invalid_query_is_422_without_station_fetch(
+    key: str, value: str
+) -> None:
+    fake = _nearby_fake()
+    params = {**NEARBY_PARAMS, key: value}
+    with _client(fake) as client:
+        response = client.get("/stations/nearby", params=params)
+    assert response.status_code == 422
+    assert fake.station_calls == 0
+
+
+def test_nearby_unknown_fuel_is_fixed_422() -> None:
+    fake = _nearby_fake()
+    with _client(fake) as client:
+        response = client.get(
+            "/stations/nearby", params={**NEARBY_PARAMS, "fuel": "001"}
+        )
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Unknown fuel product"}
+    assert fake.station_calls == 0
+
+
+def test_nearby_limit_after_distance_order_and_empty_success() -> None:
+    fake = _nearby_fake()
+    with _client(fake) as client:
+        limited = client.get("/stations/nearby", params={**NEARBY_PARAMS, "limit": "1"})
+        empty = client.get(
+            "/stations/nearby", params={**NEARBY_PARAMS, "radius_km": "1"}
+        )
+    assert limited.status_code == empty.status_code == 200
+    assert [item["station"]["id"] for item in limited.json()["items"]] == ["near"]
+    assert empty.json() == {
+        "items": [],
+        "freshness": {
+            "fetched_at": "2026-09-27T00:00:00Z",
+            "age_seconds": 0.0,
+            "state": "miss",
+            "is_stale": False,
+        },
+    }
+
+
+def test_nearby_stale_freshness_remains_http_200() -> None:
+    fake = _nearby_fake()
+    fake.station_freshness = Freshness(
+        datetime(2026, 9, 26, tzinfo=UTC), timedelta(minutes=20), CacheState.STALE
+    )
+    with _client(fake) as client:
+        response = client.get("/stations/nearby", params=NEARBY_PARAMS)
+    assert response.status_code == 200
+    assert response.json()["freshness"] == {
+        "fetched_at": "2026-09-26T00:00:00Z",
+        "age_seconds": 1200.0,
+        "state": "stale",
+        "is_stale": True,
+    }
+
+
+@pytest.mark.parametrize(
+    ("error", "status", "detail", "stage"),
+    [
+        (
+            ProviderTimeoutError("stations", "private timeout"),
+            503,
+            "Fuel data temporarily unavailable",
+            "stations",
+        ),
+        (
+            ProviderUnavailableError("stations", "private offline"),
+            503,
+            "Fuel data temporarily unavailable",
+            "stations",
+        ),
+        (
+            ProviderSchemaError("stations", "private schema"),
+            502,
+            "Fuel data response unavailable",
+            "stations",
+        ),
+        (
+            ProviderTimeoutError("products", "private timeout"),
+            503,
+            "Fuel data temporarily unavailable",
+            "products",
+        ),
+        (
+            ProviderSchemaError("products", "private schema"),
+            502,
+            "Fuel data response unavailable",
+            "products",
+        ),
+    ],
+)
+def test_nearby_provider_failures_keep_existing_public_policy(
+    error: Exception, status: int, detail: str, stage: str
+) -> None:
+    fake = _nearby_fake()
+    if stage == "products":
+        fake.failure = error
+    else:
+        fake.station_failure = error
+    with _client(fake) as client:
+        response = client.get("/stations/nearby", params=NEARBY_PARAMS)
+    assert response.status_code == status
+    assert response.json() == {"detail": detail}
+    assert "private" not in response.text
+    assert fake.station_calls == (0 if stage == "products" else 1)
+
+
+def test_nearby_route_keeps_catalog_and_health_working() -> None:
+    fake = _nearby_fake()
+    with _client(fake) as client:
+        assert client.get("/health").json() == {"status": "ok"}
+        assert client.get("/fuels").json()["items"][1]["id"] == "01"
+        assert client.get("/stations/nearby", params=NEARBY_PARAMS).status_code == 200
+
+
+def test_nearby_openapi_explains_straight_line_limitations() -> None:
+    with _client(_nearby_fake()) as client:
+        schema = client.get("/openapi.json").json()
+    operation = schema["paths"]["/stations/nearby"]["get"]
+    distance = schema["components"]["schemas"]["NearbyStationResponse"]["properties"][
+        "distance_km"
+    ]["description"]
+    assert "Haversine" in operation["description"]
+    for phrase in ("road distances", "real routes", "detours", "reachability"):
+        assert phrase in operation["description"]
+    for phrase in (
+        "straight-line",
+        "road distance",
+        "real route",
+        "detour",
+        "reachability",
+    ):
+        assert phrase in distance

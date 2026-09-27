@@ -1489,4 +1489,4 @@ Cerrar únicamente con lista de requisitos satisfechos y evidencia verificable: 
 
 Este documento fija los requisitos y el proceso; el repositorio y sus pruebas son la fuente de verdad para la implementación. Registrar aquí cambios de visión o fase activa tras aprobarlos.
 
-**Estado vigente (27/09/2026):** Fase 0 cerrada por el orquestador; repositorio y CI de esa fase verificables en GitHub. Fase 1 en curso, pendiente de revisión por el orquestador. El estado de su PR y CI se acredita en GitHub.
+**Estado vigente (27/09/2026):** Fase 0 cerrada; Fase 1 cerrada por el orquestador tras fusionar el PR #1. Fase 2 — Motor geográfico activa y aún no cerrada. El estado de PR y CI se acredita en GitHub.

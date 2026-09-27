@@ -1,12 +1,14 @@
 """Small public catalog API over the source-independent fuel provider."""
 
 from datetime import datetime
+from decimal import Decimal
 from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from fuelroute.domain.models import Station
 from fuelroute.providers.base import (
     CacheState,
     Freshness,
@@ -15,6 +17,7 @@ from fuelroute.providers.base import (
     ProviderHTTPError,
     ProviderUnavailableError,
 )
+from fuelroute.services.nearby import NearbySearchRequest, search_nearby
 
 router = APIRouter()
 
@@ -131,6 +134,107 @@ def get_municipalities(
                 id=item.id, name=item.name, province_id=item.province_id
             )
             for item in result.value
+        ],
+        freshness=_freshness(result.freshness),
+    )
+
+
+class StationResponse(BaseModel):
+    id: str
+    brand: str | None
+    address: str | None
+    locality: str | None
+    municipality: str | None
+    province: str | None
+    municipality_id: str | None
+    province_id: str | None
+    postal_code: str | None
+    latitude: float
+    longitude: float
+    schedule: str | None
+
+
+class SelectedPriceResponse(BaseModel):
+    product: FuelResponse
+    price_eur_l: Decimal
+
+
+class NearbyStationResponse(BaseModel):
+    station: StationResponse
+    price: SelectedPriceResponse
+    distance_km: float = Field(
+        description=(
+            "Haversine geodesic distance in km: a straight-line approximation, "
+            "not road distance, a real route, a detour, or a reachability guarantee."
+        )
+    )
+
+
+class NearbyStationsResponse(BaseModel):
+    items: list[NearbyStationResponse]
+    freshness: FreshnessResponse
+
+
+def _station_response(station: Station) -> StationResponse:
+    return StationResponse(
+        id=station.id,
+        brand=station.brand,
+        address=station.address,
+        locality=station.locality,
+        municipality=station.municipality,
+        province=station.province,
+        municipality_id=station.municipality_id,
+        province_id=station.province_id,
+        postal_code=station.postal_code,
+        latitude=station.latitude,
+        longitude=station.longitude,
+        schedule=station.schedule,
+    )
+
+
+@router.get(
+    "/stations/nearby",
+    response_model=NearbyStationsResponse,
+    summary="Find nearby stations with a selected fuel price",
+    description=(
+        "Distances use Haversine and are straight-line approximations. They are "
+        "not road distances, real routes, detours, or reachability guarantees. "
+        "The radius includes stations on its boundary."
+    ),
+)
+def get_nearby_stations(
+    provider: Annotated[FuelPriceProvider, Depends(get_provider)],
+    lat: Annotated[float, Query(ge=-90, le=90, allow_inf_nan=False)],
+    lon: Annotated[float, Query(ge=-180, le=180, allow_inf_nan=False)],
+    fuel: Annotated[
+        str, Query(min_length=1, description="Text product ID from /fuels")
+    ],
+    radius_km: Annotated[float, Query(gt=0, allow_inf_nan=False)],
+    limit: Annotated[int | None, Query(ge=1, le=100)] = None,
+) -> NearbyStationsResponse:
+    if not fuel.strip():
+        raise HTTPException(status_code=422, detail="Invalid fuel product")
+    if not any(product.id == fuel for product in provider.get_products().value):
+        raise HTTPException(status_code=422, detail="Unknown fuel product")
+
+    result = search_nearby(
+        provider, NearbySearchRequest(lat, lon, fuel, radius_km, limit)
+    )
+    return NearbyStationsResponse(
+        items=[
+            NearbyStationResponse(
+                station=_station_response(item.station),
+                price=SelectedPriceResponse(
+                    product=FuelResponse(
+                        id=item.price.product.id,
+                        name=item.price.product.name,
+                        abbreviation=item.price.product.abbreviation,
+                    ),
+                    price_eur_l=item.price.price_eur_l,
+                ),
+                distance_km=item.distance_km,
+            )
+            for item in result.items
         ],
         freshness=_freshness(result.freshness),
     )
