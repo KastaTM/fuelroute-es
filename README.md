@@ -1,6 +1,6 @@
 # FuelRoute ES
 
-Base técnica iniciada en la Fase 0. La visión y las decisiones de producto están en [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md). El bootstrap entregó una API de salud, una pantalla Expo mínima y una consulta controlada a MITECO; la Fase 1 está cerrada y la Fase 2 está activa.
+Base técnica iniciada en la Fase 0. La visión y las decisiones de producto están en [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md). El bootstrap entregó una API de salud, una pantalla Expo mínima y una consulta controlada a MITECO; las Fases 1 y 2 están cerradas y la Fase 3 está activa, pendiente de revisión y cierre.
 
 ## Requisitos
 
@@ -29,7 +29,9 @@ uv run --locked uvicorn app:app --host 127.0.0.1 --port 8000
 
 `GET /health` devuelve `{"status":"ok"}`. También están disponibles `GET /fuels`, `GET /provinces` y `GET /municipalities` (opcionalmente `?province_id=02`). Los catálogos responden con `items` normalizados y `freshness` (`fetched_at` UTC, `age_seconds`, `state`, `is_stale`). Una entrada stale utilizable responde 200 y se marca como tal. El primer acceso a un catálogo consulta MITECO; `/health` no lo hace. No se necesita `.env` para esta fase.
 
-`GET /stations/nearby` acepta `lat`, `lon`, `fuel`, `radius_km` y `limit` opcional (1..100). `fuel` es el ID textual obtenido de `/fuels`, incluidos posibles ceros iniciales. El radio es inclusivo. `distance_km` usa Haversine en línea recta; no es distancia por carretera, ruta real ni desvío, y no garantiza el alcance.
+`GET /stations/nearby` conserva `lat`, `lon`, `fuel`, `radius_km` y `limit` opcional (1..100). `fuel` es el ID textual de `/fuels`, incluidos ceros iniciales; el radio Haversine es inclusivo. Acepta también `autonomy_km`, `safety_reserve_percent` (20 % por defecto), `consumption_l_100km`, `liters` y `sort_by` (`distance` por defecto, `price` o `effective_cost`). El límite se aplica tras ordenar todos los candidatos del radio; `effective_cost` requiere consumo y litros.
+
+La distancia es origen → estación en línea recta, no carretera, ida y vuelta ni desvío real. `possibly_reachable` solo indica alcance provisional: confirma la ruta; `not_reachable` indica fuera del margen incluso en línea recta. El coste de desplazamiento aproxima el combustible consumido valorándolo al precio de reposición de la estación candidata, no al precio histórico del depósito. Sin autonomía, litros o consumo, los campos que dependen de ellos son `null`; el coste efectivo solo existe con litros y consumo. No se calcula ahorro.
 
 ## Móvil
 

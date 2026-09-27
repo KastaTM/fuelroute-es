@@ -1489,4 +1489,6 @@ Cerrar únicamente con lista de requisitos satisfechos y evidencia verificable: 
 
 Este documento fija los requisitos y el proceso; el repositorio y sus pruebas son la fuente de verdad para la implementación. Registrar aquí cambios de visión o fase activa tras aprobarlos.
 
-**Estado vigente (27/09/2026):** Fase 0 cerrada; Fase 1 cerrada por el orquestador tras fusionar el PR #1. Fase 2 — Motor geográfico activa y aún no cerrada. El estado de PR y CI se acredita en GitHub.
+**Estado vigente (27/09/2026):** Fase 0 cerrada; Fase 1 cerrada por el orquestador tras fusionar el PR #1; Fase 2 — Motor geográfico cerrada formalmente por el orquestador. Fase 3 — Vehículo y coste económico activa, pendiente de revisión y cierre. El estado de PR y CI se acredita en GitHub.
+
+**Decisión vigente de Fase 3:** El coste estimado de desplazamiento usa Haversine origen → estación y valora el combustible al precio del producto seleccionado en esa estación candidata. Es una aproximación al precio de reposición, no una ruta, ida y vuelta, desvío ni coste real del combustible ya presente en el depósito. El ahorro sigue excluido porque aún no hay una referencia de comparación suficientemente definida.
