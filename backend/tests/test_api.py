@@ -501,6 +501,8 @@ def test_nearby_openapi_explains_straight_line_limitations() -> None:
         "distance_km"
     ]["description"]
     assert "Haversine" in operation["description"]
+    for phrase in ("road distances", "real routes", "detours", "reachability"):
+        assert phrase in operation["description"]
     for phrase in (
         "straight-line",
         "road distance",
