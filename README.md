@@ -29,6 +29,8 @@ uv run --locked uvicorn app:app --host 127.0.0.1 --port 8000
 
 `GET /health` devuelve `{"status":"ok"}`. También están disponibles `GET /fuels`, `GET /provinces` y `GET /municipalities` (opcionalmente `?province_id=02`). Los catálogos responden con `items` normalizados y `freshness` (`fetched_at` UTC, `age_seconds`, `state`, `is_stale`). Una entrada stale utilizable responde 200 y se marca como tal. El primer acceso a un catálogo consulta MITECO; `/health` no lo hace. No se necesita `.env` para esta fase.
 
+`GET /stations/nearby` acepta `lat`, `lon`, `fuel`, `radius_km` y `limit` opcional (1..100). `fuel` es el ID textual obtenido de `/fuels`, incluidos posibles ceros iniciales. El radio es inclusivo. `distance_km` usa Haversine en línea recta; no es distancia de conducción ni representa una ruta real.
+
 ## Móvil
 
 ```powershell

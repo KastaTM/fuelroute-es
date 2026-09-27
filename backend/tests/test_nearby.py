@@ -19,6 +19,7 @@ from fuelroute.providers.base import (
     CacheState,
     Freshness,
     ProviderResult,
+    ProviderTimeoutError,
 )
 from fuelroute.services.geography import EARTH_RADIUS_KM
 from fuelroute.services.nearby import NearbySearchRequest, search_nearby
@@ -119,7 +120,7 @@ def test_selects_only_requested_price_and_preserves_textual_id() -> None:
 
 def test_missing_product_and_no_candidates_return_empty_success() -> None:
     provider = FakeProvider((station("a", 0, FuelPrice(TWO, Decimal("1"))),))
-    result = search_nearby(provider, request(radius_km=0))
+    result = search_nearby(provider, request(radius_km=1))
     assert result.items == ()
     assert result.source is SOURCE
     assert result.freshness is FRESHNESS
@@ -171,7 +172,9 @@ def test_invalid_limit_rejected_before_provider_call(limit: int | float) -> None
         NearbySearchRequest(91, 0, "1", 1),
         NearbySearchRequest(0, -181, "1", 1),
         NearbySearchRequest(0, 0, "", 1),
+        NearbySearchRequest(0, 0, "   ", 1),
         NearbySearchRequest(0, 0, "1", -1),
+        NearbySearchRequest(0, 0, "1", 0),
         NearbySearchRequest(0, 0, "1", math.inf),
     ],
 )
@@ -182,3 +185,15 @@ def test_invalid_request_rejected_before_provider_call(
     with pytest.raises(ValueError):
         search_nearby(provider, bad_request)
     assert provider.calls == 0
+
+
+def test_provider_error_propagates_unchanged() -> None:
+    error = ProviderTimeoutError("stations", "offline")
+
+    class FailingProvider(FakeProvider):
+        def get_stations(self) -> ProviderResult[StationBatch]:
+            raise error
+
+    with pytest.raises(ProviderTimeoutError) as captured:
+        search_nearby(FailingProvider(()), request())
+    assert captured.value is error

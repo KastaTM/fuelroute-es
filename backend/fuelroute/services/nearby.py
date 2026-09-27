@@ -36,10 +36,10 @@ def search_nearby(
 ) -> NearbySearchResult:
     """Filter by product and inclusive radius, then sort and optionally truncate."""
     _validate_coordinates(request.latitude, request.longitude)
-    if not isinstance(request.product_id, str) or not request.product_id:
+    if not isinstance(request.product_id, str) or not request.product_id.strip():
         raise ValueError("product_id must be a non-empty string")
-    if not math.isfinite(request.radius_km) or request.radius_km < 0:
-        raise ValueError("radius_km must be finite and non-negative")
+    if not math.isfinite(request.radius_km) or request.radius_km <= 0:
+        raise ValueError("radius_km must be finite and positive")
     if request.limit is not None and (
         isinstance(request.limit, bool)
         or not isinstance(request.limit, int)
